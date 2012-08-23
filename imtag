@@ -1,0 +1,202 @@
+#!/usr/bin/python
+'''
+This file is part of imtag.
+
+imtag is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+imtag is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with imtag.  If not, see <http://www.gnu.org/licenses/>.
+
+Copyright 2012 Wayne Vosberg <wayne.vosberg@mindtunnel.com>
+'''
+
+import argparse
+import pyexiv2
+import sys
+import re
+from string import strip, replace
+import datetime
+
+#import pdb
+
+
+
+
+
+def dumpKeys(wKeys,mdata,keys,prefix,seperator,escape):
+	'''dump the keys'''
+	if len(wKeys) > 0:
+		for k in wKeys:
+			if k in keys:
+				if escape:
+					print '%s%s%s%s'%(prefix,k,seperator,re.escape(str(mdata[k].raw_value)))
+				else:
+					print '%s%s%s%s'%(prefix,k,seperator,mdata[k].raw_value)
+	else:				
+		for k in keys:
+			if escape:
+				print '%s%s%s%s'%(prefix,k,seperator,re.escape(str(mdata[k].raw_value)))
+			else:
+				print '%s%s%s%s'%(prefix,k,seperator,mdata[k].raw_value)
+
+
+
+
+
+
+def main():
+	exif = iptc = xmp = True
+	
+	parser = argparse.ArgumentParser(
+        description="Dump exif, iptc and xmp data from an image file.")
+	parser.add_argument('-e', '--exif', action='count',
+		help='dump exif data (default is --exif --iptc --xmp)')
+	parser.add_argument('-i', '--iptc', action='count',
+		help='dump iptc data (default is --exif --iptc --xmp)')
+	parser.add_argument('-x', '--xmp', action='count',
+		help='dump xmp data (default is --exif --iptc --xmp)')
+	
+	group = parser.add_mutually_exclusive_group()
+	group.add_argument('-g', action='append', dest='gKeys', default=[],
+		metavar='key.name',
+		help='keys to list, can be specified multiple times')
+	group.add_argument('-s', action='append', dest='sKeys', default=[],
+		metavar='key.name=value',
+		help='Key/value pairs to modify. Can be specified multiple times '+
+			'(will warn if operating on multiple files)  Use key.name=NULL to delete the entry.  '+
+			'The string passed in will be interpreted as a python object, so you may pass list or '+
+			'dict objects as well as function calls (=datetime.datetime(yy,mm,dd,hh,mm)')
+	parser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true',
+		help='don\'t display a warning about overwriting files')
+	parser.add_argument('-f', '--force', dest='force', default=False, action='store_true',
+		help='force setting keys on multiple files')
+	parser.add_argument('-p', '--prefix', dest='pre', default=False, action='store_true',
+		help='prefix the filename to the output (useful with -g on multiple files)')
+	parser.add_argument('--seperator', dest='sep', default=':',
+		help='seperator string (default=":")')
+	parser.add_argument('--escape', dest='esc', default=False, action='store_true',
+		help='escape output - can be useful if you are trying to use the output strings in a script')
+	parser.add_argument('files', metavar='Files', type=str, nargs='+',
+		help='list of image file names to operate on')
+	
+	
+	args = parser.parse_args()
+	
+	if args.exif > 0 or args.iptc > 0 or args.xmp > 0:
+		exif = iptc = xmp = False
+		if args.exif > 0:
+			exif = True
+		if args.iptc > 0:
+			iptc = True
+		if args.xmp > 0:
+			xmp = True
+	
+	sKeys={}
+	gKeys=args.gKeys
+
+	for o in args.sKeys:
+		try:
+			k,v=o.split('=')
+		except ValueError:
+			print 'Error with [%s]: format: keyFamily.keyGroup.keyTag=keyValue'%o
+			sys.exit()
+		
+		try:	
+			sKeys[k]=eval(v)
+		except SyntaxError:
+			sKeys[k]=eval('"%s"'%v)
+		
+	
+	if len(sKeys) > 0 and len(args.files) > 1:
+		if not args.force:
+			print '\n\nWARNING!  Setting keys on multiple files!'
+			print '\nTo set the following keys:'
+			for k,v in sKeys.iteritems():
+				print k,'=',v
+			print '\non the following files you must use --force'
+			for f in args.files:
+				print f,
+			print '\n'
+	
+	if len(sKeys) == 0:
+		for image in args.files:
+			if args.pre:
+				prefix=image+args.sep
+			else:
+				prefix=''
+			
+			try:	
+				md = pyexiv2.ImageMetadata(image)
+				md.read()
+			except	IOError:
+				print "Error with [%s]: %s"%(image,sys.exc_info()[1])
+				sys.exit()
+
+			if exif:
+				dumpKeys(gKeys,md,md.exif_keys,prefix,args.sep,args.esc)				
+			if iptc:
+				dumpKeys(gKeys,md,md.iptc_keys,prefix,args.sep,args.esc)				
+			if xmp:
+				dumpKeys(gKeys,md,md.xmp_keys,prefix,args.sep,args.esc)
+				
+	else:
+		if not args.quiet:
+			print 'WARNING!  I do basically NO validity checking on what you are setting.  If the'
+			print 'pyexiv2 library will accept your input then it will try to modify your file.'
+			print 'I STRONGLY recommend you back up your images before modifying the EXIF data.'
+			print 'You\'ve been warned - this could destroy your file!'
+			print '\nUse the -q option to bypass this warning'
+			ok=raw_input('OK to continue? [y/n] ')
+			if  ok != 'y':
+				print 'aborting'
+				sys.exit()
+				
+		for image in args.files:
+			
+			try:	
+				md = pyexiv2.ImageMetadata(image)
+				md.read()
+			except IOError:
+				print "Error with [%s]: %s"%(image,sys.exc_info()[1])
+				sys.exit()
+			
+			for k,v in sKeys.iteritems():
+				family,group,tag = k.split('.')
+				print ""
+				if k in md.keys():
+					if v == 'NULL':
+						print 'deleting md[%s]'%k
+					else:
+						print 'replacing md[%s]=%s\n     with md[%s]=%s'%(k,md[k].raw_value,k,v)
+				else:
+					if v == 'NULL':
+						print 'no need to delete md[%s], it doesn\'t exist'%k
+					else:
+						print 'adding md[%s]=%s'%(k,v)
+				if v == 'NULL':
+					md.__delitem__(k)	
+				elif family == 'Exif':					
+					md[k] = pyexiv2.ExifTag(k,v)
+				elif family == 'Iptc':
+					if type(v) == list:
+						md[k] = pyexiv2.IptcTag(k,v)
+					else:
+						md[k] = pyexiv2.IptcTag(k,[v])					
+				elif family == 'Xmp':
+					md[k] = pyexiv2.XmpTag(k,v)
+				else:
+					print 'unknown tag family [%s'%family
+					sys.exit()
+			md.write()
+								
+    
+if __name__ == '__main__':
+    sys.exit(main())
