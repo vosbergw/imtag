@@ -74,6 +74,8 @@ def main():
 			'(will warn if operating on multiple files)  Use key.name=NULL to delete the entry.  '+
 			'The string passed in will be interpreted as a python object, so you may pass list or '+
 			'dict objects as well as function calls (=datetime.datetime(yy,mm,dd,hh,mm)')
+	
+	
 	parser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true',
 		help='don\'t display a warning about overwriting files')
 	parser.add_argument('-f', '--force', dest='force', default=False, action='store_true',
@@ -84,6 +86,8 @@ def main():
 		help='seperator string (default=":")')
 	parser.add_argument('--escape', dest='esc', default=False, action='store_true',
 		help='escape output - can be useful if you are trying to use the output strings in a script')
+	
+	
 	parser.add_argument('files', metavar='Files', type=str, nargs='+',
 		help='list of image file names to operate on')
 	
