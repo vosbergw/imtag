@@ -155,7 +155,7 @@ def main():
 		if not args.quiet:
 			print 'WARNING!  I do basically NO validity checking on what you are setting.  If the'
 			print 'pyexiv2 library will accept your input then it will try to modify your file.'
-			print 'I STRONGLY recommend you back up your images before modifying the EXIF data.'
+			print 'I STRONGLY recommend you back up your images before modifying the metadata.'
 			print 'You\'ve been warned - this could destroy your file!'
 			print '\nUse the -q option to bypass this warning'
 			ok=raw_input('OK to continue? [y/n] ')
