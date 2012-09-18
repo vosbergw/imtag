@@ -9,7 +9,7 @@ If you can get the command line to accept your key/value and then
 if the [pyexiv2](http://tilloy.net/dev/pyexiv2/) 
 library will accept it as a key/value pair, it will be set.
 
-```
+'''
 $ ./imtag --help
 usage: imtag [-h] [-e] [-i] [-x] [-g key.name | -s key.name=value] [-q] [-f]
              [-p] [--seperator SEP] [--escape]
@@ -39,6 +39,6 @@ optional arguments:
   --seperator SEP    seperator string (default=":")
   --escape           escape output - can be useful if you are trying to use
                      the output strings in a script
-```
+'''
 
 
