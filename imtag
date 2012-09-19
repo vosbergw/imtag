@@ -195,7 +195,23 @@ def main():
 					else:
 						md[k] = pyexiv2.IptcTag(k,[v])					
 				elif family == 'Xmp':
-					md[k] = pyexiv2.XmpTag(k,v)
+					try:
+						md[k] = pyexiv2.XmpTag(k,v)
+					except KeyError:
+						print 'k: ',k
+						if group == 'darktable':
+							try:
+								# try to register darktable
+								pyexiv2.xmp.register_namespace(\
+									'http://darktable.sf.net/',group)
+								print 'registered darktable'
+							except KeyError:
+								print 'error registering darktable: ',sys.exc_info()[1]
+								sys.exit()
+							md[k] = pyexiv2.XmpTag(k,v)
+						else:
+							print 'error: ',sys.exc_info()[1]
+							sys.exit()
 				else:
 					print 'unknown tag family [%s'%family
 					sys.exit()
