@@ -115,6 +115,9 @@ def main():
 		
 		try:	
 			sKeys[k]=eval(v)
+		except NameError:
+			print 'type:',type(v)
+			sKeys[k]=v
 		except SyntaxError:
 			sKeys[k]=eval('"%s"'%v)
 		
@@ -188,15 +191,25 @@ def main():
 				if v == 'NULL':
 					md.__delitem__(k)	
 				elif family == 'Exif':					
-					md[k] = pyexiv2.ExifTag(k,v)
+					try:
+						md[k] = pyexiv2.ExifTag(k,v)
+					except:
+						print 'EXIF Error: ',sys.exc_info()[1]
+						sys.exit()
 				elif family == 'Iptc':
-					if type(v) == list:
-						md[k] = pyexiv2.IptcTag(k,v)
-					else:
-						md[k] = pyexiv2.IptcTag(k,[v])					
+					try:
+						if type(v) == list:
+							md[k] = pyexiv2.IptcTag(k,v)
+						else:
+							md[k] = pyexiv2.IptcTag(k,[v])					
+					except:
+						print 'IPTC Error: ',sys.exc_info()[1]
+						sys.exit()
 				elif family == 'Xmp':
 					try:
 						md[k] = pyexiv2.XmpTag(k,v)
+					except TypeError:
+						md[k] = pyexiv2.XmpTag(k,[v])
 					except KeyError:
 						print 'k: ',k
 						if group == 'darktable':
@@ -208,13 +221,17 @@ def main():
 							except KeyError:
 								print 'error registering darktable: ',sys.exc_info()[1]
 								sys.exit()
-							md[k] = pyexiv2.XmpTag(k,v)
+							try:
+								md[k] = pyexiv2.XmpTag(k,v)
+							except TypeError:
+								md[k] = pyexiv2.XmpTag(k,[v])
 						else:
 							print 'error: ',sys.exc_info()[1]
 							sys.exit()
 				else:
 					print 'unknown tag family [%s'%family
 					sys.exit()
+				
 			md.write()
 								
     
