@@ -92,6 +92,24 @@ def main():
 		help='list of image file names to operate on')
 	
 	
+	# register some namespaces
+	try:
+		pyexiv2.xmp.register_namespace('http://darktable.sf.net/','darktable')
+	except:
+		pass
+	#try:
+	#	pyexiv2.xmp.register_namespace('http://ns.adobe.com/xap/1.0/','xmp')
+	#except:
+	#	pass
+	#try:
+	#	pyexiv2.xmp.register_namespace('http://ns.adobe.com/lightroom/1.0/','lr')
+	#except:
+	#	pass
+	#try:
+	#	pyexiv2.xmp.register_namespace('http://purl.org/dc/elements/1.1/','dc')
+	#except:
+	#	pass
+
 	args = parser.parse_args()
 	
 	if args.exif > 0 or args.iptc > 0 or args.xmp > 0:
@@ -113,13 +131,16 @@ def main():
 			print 'Error with [%s]: format: keyFamily.keyGroup.keyTag=keyValue'%o
 			sys.exit()
 		
+		#print 'type v: ',type(v)
 		try:	
 			sKeys[k]=eval(v)
+		#	print 'hit 1: ',type(sKeys[k])
 		except NameError:
-			print 'type:',type(v)
 			sKeys[k]=v
-		except SyntaxError:
+		#	print 'hit 2: ',type(sKeys[k])
+		except: #  SyntaxError:
 			sKeys[k]=eval('"%s"'%v)
+		#	print 'hit 3: ',type(sKeys[k])
 		
 	#try:
 	#	print 'k',k,'=',sKeys[k],'(',type(sKeys[k]),')'
@@ -193,7 +214,11 @@ def main():
 					else:
 						print 'adding md[%s]=%s'%(k,v)
 				if v == 'NULL':
-					md.__delitem__(k)	
+					try:
+						md.__delitem__(k)	
+					except:
+						print 'DEL Error: ',sys.exc_info()[1]
+						sys.exit()
 				elif family == 'Exif':					
 					try:
 						md[k] = pyexiv2.ExifTag(k,v)
@@ -202,45 +227,25 @@ def main():
 						sys.exit()
 				elif family == 'Iptc':
 					try:
-						if type(v) == list:
-							md[k] = pyexiv2.IptcTag(k,v)
-						else:
-							md[k] = pyexiv2.IptcTag(k,[v])					
+						md[k] = pyexiv2.IptcTag(k,v)
 					except:
-						print 'IPTC Error: ',sys.exc_info()[1]
-						sys.exit()
+						try:
+							#print 'try 2'
+							md[k] = pyexiv2.IptcTag(k,[v])					
+						except:
+							#print '%s (%s)'%(v,type(v))
+							print 'IPTC Error: ',sys.exc_info()[1]
+							sys.exit()
 				elif family == 'Xmp':
 					try:
 						md[k] = pyexiv2.XmpTag(k,v)
 					except (TypeError, pyexiv2.xmp.XmpValueError):
 						try:
-							md[k] = pyexiv2.XmpTag(k,[v])
+							# md[k] = pyexiv2.XmpTag(k,raw_value=v)
+							md[k] = v
 						except:
 							print 'type: ',type(v)
 							print sys.exc_info()[1]
-							sys.exit()
-					except KeyError:
-						print 'k: ',k
-						if group == 'darktable':
-							try:
-								# try to register darktable
-								pyexiv2.xmp.register_namespace(\
-									'http://darktable.sf.net/',group)
-								print 'registered darktable'
-							except KeyError:
-								print 'error registering darktable: ',sys.exc_info()[1]
-								sys.exit()
-							try:
-								md[k] = pyexiv2.XmpTag(k,v)
-							except (TypeError, pyexiv2.xmp.XmpValueError):
-								try:
-									md[k] = pyexiv2.XmpTag(k,[v])
-								except:
-									print 'type: ',type(v)
-									print sys.exc_info()[1]
-									sys.exit()
-						else:
-							print 'error: ',sys.exc_info()[1]
 							sys.exit()
 				else:
 					print 'unknown tag family [%s'%family
